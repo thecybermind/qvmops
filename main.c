@@ -1,7 +1,7 @@
 /*
 QVMOPS - Quake3 Virtual Machine Opcodes
 Copyright 2004-2024
-https://github.com/thecybermind/qmm/
+https://github.com/thecybermind/qvmops/
 3-clause BSD license: https://opensource.org/license/bsd-3-clause
 
 Created By:
