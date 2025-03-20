@@ -21,6 +21,7 @@ Created By:
 #define VM_MAGIC_BIG	0x44147212	//big endian (need to byteswap)
 
 #define DATA_ROW_LEN	32
+
 //opcodes
 typedef enum {
 	OP_UNDEF,
@@ -330,16 +331,16 @@ int main(int argc, char* argv[]) {
 	//output header info
 	fprintf(htxt, "HEADER\n======\n");
 	if (swapped)
-		fprintf(htxt, "MAGIC: %x (big endian)\n", byteswap(header->magic));
+		fprintf(htxt, "MAGIC: %X (big endian)\n", byteswap(header->magic));
 	else
-		fprintf(htxt, "MAGIC: %x (little endian)\n", header->magic);
+		fprintf(htxt, "MAGIC: %X (little endian)\n", header->magic);
 	fprintf(htxt, "OPCOUNT: %i\n", header->opcount);
-	fprintf(htxt, "CODEOFF: 0x%x (%i)\n", header->codeoffset, header->codeoffset);
-	fprintf(htxt, "CODELEN: %i\n", header->codelength);
-	fprintf(htxt, "DATAOFF: 0x%x (%i)\n", header->dataoffset, header->dataoffset);
-	fprintf(htxt, "DATALEN: %i\n", header->datalen);
-	fprintf(htxt, "LITLEN : %i\n", header->litlen);
-	fprintf(htxt, "BSSLEN : %i\n", header->bsslen);
+	fprintf(htxt, "CODEOFF: 0x%X (%i)\n", header->codeoffset, header->codeoffset);
+	fprintf(htxt, "CODELEN: 0x%X (%i)\n", header->codelength, header->codelength);
+	fprintf(htxt, "DATAOFF: 0x%X (%i)\n", header->dataoffset, header->dataoffset);
+	fprintf(htxt, "DATALEN: 0x%X (%i)\n", header->datalen, header->datalen);
+	fprintf(htxt, "LITLEN : 0x%X (%i)\n", header->litlen, header->litlen);
+	fprintf(htxt, "BSSLEN : 0x%X (%i)\n", header->bsslen, header->bsslen);
 	
 	fprintf(htxt, "\n\nCODE SEGMENT\n============\n");
 
@@ -348,7 +349,10 @@ int main(int argc, char* argv[]) {
 
 	//loop through each instruction
 	for (n = 0; n < header->opcount && p < qvm + header->codeoffset + header->codelength; ++n) {
-		int op = (vmops_t)*p;
+		int op = *p;
+
+		// output offset
+		fprintf(htxt, "%08X ", p - qvm - header->codeoffset);
 
 		switch (op) {
 			//4 byte arg ops
@@ -398,6 +402,9 @@ int main(int argc, char* argv[]) {
 
 	//loop through each byte in data segment
 	while (p < qvm + header->dataoffset + header->datalen + header->litlen) {
+		// print offset
+		fprintf(htxt, "%04X ", p - qvm - header->dataoffset);
+
 		// print hex values
 		for (int b = 0; b < DATA_ROW_LEN; b++) {
 			if (b == DATA_ROW_LEN / 2)
@@ -405,7 +412,7 @@ int main(int argc, char* argv[]) {
 			if (p + b >= qvm + header->dataoffset + header->datalen + header->litlen)
 				fprintf(htxt, "   ");
 			else
-				fprintf(htxt, " %02x", p[b]);
+				fprintf(htxt, " %02X", p[b]);
 		}
 
 		fprintf(htxt, "    ");
