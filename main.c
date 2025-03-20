@@ -9,6 +9,7 @@ Created By:
 
 */
 
+#define _CRT_SECURE_NO_WARNINGS 1
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -19,6 +20,7 @@ Created By:
 #define	VM_MAGIC	0x12721444	//little endian (normal)
 #define VM_MAGIC_BIG	0x44147212	//big endian (need to byteswap)
 
+#define DATA_ROW_LEN	32
 //opcodes
 typedef enum {
 	OP_UNDEF,
@@ -240,6 +242,12 @@ int byteswap(int i) {
 	return ((int)b1<<24) + ((int)b2<<16) + ((int)b3<<8) + b4;
 }
 
+char printc(byte x) {
+	if (x < 32 || x == 127 || x == 255)
+		return '.';
+	return *(char*)&x;
+}
+
 int main(int argc, char* argv[]) {
 	char outfile[1024];	//output file name, basically the qvm name with .txt stuck on the end
 	int swapped = 0;	//is this a big-endian machine (requiring byte-swapping of all DWORDS?)
@@ -315,7 +323,8 @@ int main(int argc, char* argv[]) {
 
 	//open output file for writing
 	strncpy(outfile, argv[1], sizeof outfile);
-	strncat(outfile, ".txt", sizeof outfile);
+	outfile[sizeof(outfile) - 1] = '\0';
+	strncat(outfile, ".txt", sizeof(outfile) - strlen(outfile) - 1);
 	htxt = fopen(outfile, "w");
 
 	//output header info
@@ -332,13 +341,13 @@ int main(int argc, char* argv[]) {
 	fprintf(htxt, "LITLEN : %i\n", header->litlen);
 	fprintf(htxt, "BSSLEN : %i\n", header->bsslen);
 	
-	fprintf(htxt, "CODE SEGMENT\n============\n");
+	fprintf(htxt, "\n\nCODE SEGMENT\n============\n");
 
 	//start pointer at start of code segment
 	p = qvm + header->codeoffset;
 
 	//loop through each instruction
-	for (n = 0; n < header->opcount, p < qvm + header->codeoffset + header->codelength; ++n) {
+	for (n = 0; n < header->opcount && p < qvm + header->codeoffset + header->codelength; ++n) {
 		int op = (vmops_t)*p;
 
 		switch (op) {
@@ -380,6 +389,40 @@ int main(int argc, char* argv[]) {
 				++p;
 				break;
 		}
+	}
+
+	fprintf(htxt, "\n\nDATA SEGMENT\n============\n");
+
+	//start pointer at start of data segment
+	p = qvm + header->dataoffset;
+
+	//loop through each byte in data segment
+	while (p < qvm + header->dataoffset + header->datalen + header->litlen) {
+		// print hex values
+		for (int b = 0; b < DATA_ROW_LEN; b++) {
+			if (b == DATA_ROW_LEN / 2)
+				fprintf(htxt, "   ");
+			if (p + b >= qvm + header->dataoffset + header->datalen + header->litlen)
+				fprintf(htxt, "   ");
+			else
+				fprintf(htxt, " %02x", p[b]);
+		}
+
+		fprintf(htxt, "    ");
+
+		// print characters
+		for (int b = 0; b < DATA_ROW_LEN; b++) {
+			if (b == DATA_ROW_LEN / 2)
+				fprintf(htxt, " ");
+			if (p + b >= qvm + header->dataoffset + header->datalen + header->litlen)
+				fprintf(htxt, " ");
+			else
+				fprintf(htxt, "%c", printc(p[b]));
+		}
+
+		fprintf(htxt, "\n");
+
+		p += DATA_ROW_LEN;
 	}
 
 	//close up shop and go fishing
