@@ -17,8 +17,7 @@ Created By:
 //magic numbers at start of .qvm
 //.qvm is generated with little endian order
 //magic number appears in file as 44 14 72 12
-#define	VM_MAGIC	0x12721444	//little endian (normal)
-#define VM_MAGIC_BIG	0x44147212	//big endian (need to byteswap)
+#define	VM_MAGIC	0x12721444	//little endian
 
 #define DATA_ROW_LEN	32
 
@@ -231,18 +230,6 @@ typedef struct {
 //"byte" is cooler than "char" any day of the week
 typedef unsigned char byte;
 
-//swap an int
-int byteswap(int i) {
-	byte b1,b2,b3,b4;
-
-	b1 = i&255;
-	b2 = (i>>8)&255;
-	b3 = (i>>16)&255;
-	b4 = (i>>24)&255;
-
-	return ((int)b1<<24) + ((int)b2<<16) + ((int)b3<<8) + b4;
-}
-
 char printc(byte x) {
 	if (x < 32 || x == 127 || x == 255)
 		return '.';
@@ -251,7 +238,6 @@ char printc(byte x) {
 
 int main(int argc, char* argv[]) {
 	char outfile[1024];	//output file name, basically the qvm name with .txt stuck on the end
-	int swapped = 0;	//is this a big-endian machine (requiring byte-swapping of all DWORDS?)
 	int qvmsize = 0;	//size of the qvm file
 	int n = 0;		//temp int
 	FILE* htxt;		//stream for the output file
@@ -295,20 +281,7 @@ int main(int argc, char* argv[]) {
 	fread(qvm, 1, qvmsize, hqvm);
 	fclose(hqvm);
 
-	//check for big-endian systems and swap header values accordingly
 	header = (vmheader_t*)qvm;
-	if (header->magic == VM_MAGIC_BIG) {
-		swapped = 1;
-		printf("Big-endian machine detected, byteswapping as needed...\n");
-		header->magic = byteswap(header->magic);
-		header->opcount = byteswap(header->opcount);
-		header->codeoffset = byteswap(header->codeoffset);
-		header->codelength = byteswap(header->codelength);
-		header->dataoffset = byteswap(header->dataoffset);
-		header->datalen = byteswap(header->datalen);
-		header->litlen = byteswap(header->litlen);
-		header->bsslen = byteswap(header->bsslen);
-	}
 
 	//if the magic number doesn't match, abort
 	if (header->magic != VM_MAGIC) {
@@ -330,10 +303,7 @@ int main(int argc, char* argv[]) {
 
 	//output header info
 	fprintf(htxt, "HEADER\n======\n");
-	if (swapped)
-		fprintf(htxt, "MAGIC: %X (big endian)\n", byteswap(header->magic));
-	else
-		fprintf(htxt, "MAGIC: %X (little endian)\n", header->magic);
+	fprintf(htxt, "MAGIC: %X\n", header->magic);
 	fprintf(htxt, "OPCOUNT: %i\n", header->opcount);
 	fprintf(htxt, "CODEOFF: 0x%X (%i)\n", header->codeoffset, header->codeoffset);
 	fprintf(htxt, "CODELEN: 0x%X (%i)\n", header->codelength, header->codelength);
@@ -378,7 +348,7 @@ int main(int argc, char* argv[]) {
 			case OP_GEF:
 			case OP_BLOCK_COPY:
 				++p;
-				fprintf(htxt, "%s %d\n", opcodename(op), swapped ? byteswap(*(int*)p) : *(int*)p);
+				fprintf(htxt, "%s %d\n", opcodename(op), *(int*)p);
 				p += 4;
 				break;
 			//1 byte arg ops
