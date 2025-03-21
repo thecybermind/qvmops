@@ -377,10 +377,15 @@ int main(int argc, char* argv[]) {
 
 		// print hex values
 		for (int b = 0; b < DATA_ROW_LEN; b++) {
+			// halfway through the row, print a gap
 			if (b == DATA_ROW_LEN / 2)
 				fprintf(htxt, "   ");
+			// if this row runs out of data before the end, print empty spaces
 			if (p + b >= qvm + header->dataoffset + header->datalen + header->litlen)
 				fprintf(htxt, "   ");
+			// if this is the split between data and lit, put a bar
+			else if (p + b == qvm + header->dataoffset + header->datalen)
+				fprintf(htxt, "|%02X", p[b]);
 			else
 				fprintf(htxt, " %02X", p[b]);
 		}
@@ -389,8 +394,10 @@ int main(int argc, char* argv[]) {
 
 		// print characters
 		for (int b = 0; b < DATA_ROW_LEN; b++) {
+			// halfway through the row, print a gap
 			if (b == DATA_ROW_LEN / 2)
 				fprintf(htxt, " ");
+			// if this row runs out of data before the end, print empty spaces
 			if (p + b >= qvm + header->dataoffset + header->datalen + header->litlen)
 				fprintf(htxt, " ");
 			else
