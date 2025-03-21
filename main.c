@@ -1,5 +1,5 @@
 /*
-QVMOPS - Quake3 Virtual Machine Opcodes
+QVMOPS - Quake3 Virtual Machine Opcodes disassembler
 Copyright 2004-2024
 https://github.com/thecybermind/qvmops/
 3-clause BSD license: https://opensource.org/license/bsd-3-clause
@@ -8,6 +8,8 @@ Created By:
     Kevin Masterson < cybermind@gmail.com >
 
 */
+
+#define QVMOPS_VERSION "1.1.1"
 
 #define _CRT_SECURE_NO_WARNINGS 1
 #include <stdio.h>
@@ -246,6 +248,8 @@ int main(int argc, char* argv[]) {
 	byte* p;		//start of code segment
 	vmheader_t* header;	//same as 'qvm' just used to interpret it a bit differently :)
 
+	printf("qvmops v" QVMOPS_VERSION "\n\n");
+	
 	//require a filename parameter
 	if (argc < 2) {
 		printf("Usage: %s <file>\n", argv[0]);
