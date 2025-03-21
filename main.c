@@ -322,7 +322,7 @@ int main(int argc, char* argv[]) {
 		int op = *p;
 
 		// output offset
-		fprintf(htxt, "%08X ", p - qvm - header->codeoffset);
+		fprintf(htxt, "%06d ", n);
 
 		switch (op) {
 			//4 byte arg ops
@@ -354,7 +354,7 @@ int main(int argc, char* argv[]) {
 			//1 byte arg ops
 			case OP_ARG:
 				++p;
-				fprintf(htxt, "%s %d\n", opcodename(op), (int)*p);
+				fprintf(htxt, "%s %d\n", opcodename(op), *p);
 				++p;
 				break;
 			//no arg op
