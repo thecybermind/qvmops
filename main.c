@@ -16,14 +16,18 @@ Created By:
 #include <stdlib.h>
 #include <string.h>
 
-//magic numbers at start of .qvm
-//.qvm is generated with little endian order
-//magic number appears in file as 44 14 72 12
-#define	VM_MAGIC	0x12721444	//little endian
+// magic numbers at start of .qvm
+// .qvm is generated with little endian order
+// magic number appears in file as 44 14 72 12
 
+// no use in byteswapping since we don't know what bytes in the data segment are
+// part of WORDs or DWORDs
+#define	VM_MAGIC	0x12721444	// little endian
+
+// length in bytes of each row of the "hex editor" view of the data segment
 #define DATA_ROW_LEN	32
 
-//opcodes
+// opcodes
 typedef enum {
 	OP_UNDEF,
 	OP_NOP,
@@ -87,7 +91,7 @@ typedef enum {
 	OP_CVFI
 } vmops_t;
 
-//return a padded string for the opcode name
+// return a padded string for the opcode name
 const char* opcodename(vmops_t op) {
 	switch(op) {
 	case OP_UNDEF:
@@ -217,7 +221,7 @@ const char* opcodename(vmops_t op) {
 	return "unknown  ";
 }
 
-//QVM header
+// QVM header
 typedef struct {
 	int magic;
 	int opcount;
@@ -229,7 +233,6 @@ typedef struct {
 	int bsslen;
 } vmheader_t;
 
-//"byte" is cooler than "char" any day of the week
 typedef unsigned char byte;
 
 char printc(byte x) {
@@ -239,73 +242,71 @@ char printc(byte x) {
 }
 
 int main(int argc, char* argv[]) {
-	char outfile[1024];	//output file name, basically the qvm name with .txt stuck on the end
-	int qvmsize = 0;	//size of the qvm file
-	int n = 0;		//temp int
-	FILE* htxt;		//stream for the output file
-	FILE* hqvm;		//stream for the input file
-	byte* qvm;		//block to store whole file in memory
-	byte* p;		//start of code segment
-	vmheader_t* header;	//same as 'qvm' just used to interpret it a bit differently :)
+	char outfile[1024];		// output file name, basically the qvm name with .txt stuck on the end
+	int qvmsize = 0;		// size of the qvm file
+	int n = 0;				// temp int
+	FILE* htxt;				// stream for the output file
+	FILE* hqvm;				// stream for the input file
+	byte* qvm;				// block to store whole file in memory
+	byte* p;				// start of code segment
+	vmheader_t* header;		// same as 'qvm' just used to interpret it a bit differently :)
 
 	printf("qvmops v" QVMOPS_VERSION "\n\n");
 	
-	//require a filename parameter
+	// require a filename parameter
 	if (argc < 2) {
 		printf("Usage: %s <file>\n", argv[0]);
 		return 1;
 	}
 
-	//open the .qvm file for reading
+	// open the .qvm file for reading
 	hqvm = fopen(argv[1], "rb");
 
-	//error checking is your friend
+	// error checking is your friend
 	if (!hqvm || feof(hqvm)) {
 		printf("File not found: %s\n", argv[1]);
 		return 1;
 	}
 
 
-	//grab file size
+	// grab file size
 	n = ftell(hqvm);
 	fseek(hqvm, 0, SEEK_END);
 	qvmsize = ftell(hqvm);
 	fseek(hqvm, n, SEEK_SET) ;
 
-	//allocate enough memory for the whole thing
+	// allocate enough memory for the whole thing
 	qvm = (byte*)malloc(qvmsize);
-
-	//this should only happen if your comp sucks
 	if (!qvm) {
 		printf("Unable to allocate memory block: %d\n", qvmsize);
 		return 1;
 	}
 
-	//read the file into memory and close the file handle
+	// read the file into memory and close the file handle
 	fread(qvm, 1, qvmsize, hqvm);
 	fclose(hqvm);
 
 	header = (vmheader_t*)qvm;
 
-	//if the magic number doesn't match, abort
+	// if the magic number doesn't match, abort
 	if (header->magic != VM_MAGIC) {
 		printf("Invalid QVM file, aborting\n");
 		exit(1);
 	}
 
-	//if the header has false code segment data, abort
+	// if the header has false code segment info, abort
 	if (header->codeoffset > qvmsize || header->codeoffset + header->codelength > qvmsize) {
 		printf("Invalid QVM file, aborting\n");
 		exit(1);
 	}
 
-	//open output file for writing
+	// open output file for writing
 	strncpy(outfile, argv[1], sizeof outfile);
 	outfile[sizeof(outfile) - 1] = '\0';
 	strncat(outfile, ".txt", sizeof(outfile) - strlen(outfile) - 1);
 	htxt = fopen(outfile, "w");
 
-	//output header info
+	// output header info
 	fprintf(htxt, "HEADER\n======\n");
 	fprintf(htxt, "MAGIC: %X\n", header->magic);
 	fprintf(htxt, "OPCOUNT: %i\n", header->opcount);
@@ -318,18 +319,18 @@ int main(int argc, char* argv[]) {
 	
 	fprintf(htxt, "\n\nCODE SEGMENT\n============\n");
 
-	//start pointer at start of code segment
+	// start pointer at start of code segment
 	p = qvm + header->codeoffset;
 
-	//loop through each instruction
+	// loop through each instruction
 	for (n = 0; n < header->opcount && p < qvm + header->codeoffset + header->codelength; ++n) {
 		int op = *p;
 
-		// output offset
+		//  output offset
 		fprintf(htxt, "%06d ", n);
 
 		switch (op) {
-			//4 byte arg ops
+			// 4 byte arg ops
 			case OP_ENTER:
 			case OP_LEAVE:
 			case OP_CONST:
@@ -355,13 +356,13 @@ int main(int argc, char* argv[]) {
 				fprintf(htxt, "%s %d\n", opcodename(op), *(int*)p);
 				p += 4;
 				break;
-			//1 byte arg ops
+			// 1 byte arg ops
 			case OP_ARG:
 				++p;
 				fprintf(htxt, "%s %d\n", opcodename(op), *p);
 				++p;
 				break;
-			//no arg op
+			// no arg op
 			default:
 				fprintf(htxt, "%s\n", opcodename(op));
 				++p;
@@ -371,10 +372,10 @@ int main(int argc, char* argv[]) {
 
 	fprintf(htxt, "\n\nDATA SEGMENT\n============\n");
 
-	//start pointer at start of data segment
+	// start pointer at start of data segment
 	p = qvm + header->dataoffset;
 
-	//loop through each byte in data segment
+	// loop through each byte in data segment
 	while (p < qvm + header->dataoffset + header->datalen + header->litlen) {
 		// print offset
 		fprintf(htxt, "%04X ", p - qvm - header->dataoffset);
@@ -413,7 +414,7 @@ int main(int argc, char* argv[]) {
 		p += DATA_ROW_LEN;
 	}
 
-	//close up shop and go fishing
+	// close up shop and go fishing
 	free(qvm);
 	fclose(htxt);
 	printf("%s written\n", outfile);
