@@ -5,11 +5,11 @@ https://github.com/thecybermind/qvmops/
 3-clause BSD license: https://opensource.org/license/bsd-3-clause
 
 Created By:
-    Kevin Masterson < cybermind@gmail.com >
+    Kevin Masterson < k.m.masterson@gmail.com >
 
 */
 
-#define QVMOPS_VERSION "1.1.1"
+#define QVMOPS_VERSION "1.1.2"
 
 #define _CRT_SECURE_NO_WARNINGS 1
 #include <stdio.h>
