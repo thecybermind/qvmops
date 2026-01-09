@@ -236,7 +236,7 @@ typedef struct {
 typedef unsigned char byte;
 
 char printc(byte x) {
-	if (x < 32 || x == 127 || x == 255)
+	if (x < 32 || x >= 127)
 		return '.';
 	return *(char*)&x;
 }
@@ -248,7 +248,7 @@ int main(int argc, char* argv[]) {
 	FILE* htxt;				// stream for the output file
 	FILE* hqvm;				// stream for the input file
 	byte* qvm;				// block to store whole file in memory
-	byte* p;				// start of code segment
+	byte* p;				// pointer through file
 	vmheader_t* header;		// same as 'qvm' just used to interpret it a bit differently :)
 
 	printf("qvmops v" QVMOPS_VERSION "\n\n");
@@ -290,13 +290,25 @@ int main(int argc, char* argv[]) {
 
 	// if the magic number doesn't match, abort
 	if (header->magic != VM_MAGIC) {
-		printf("Invalid QVM file, aborting\n");
+		printf("Invalid QVM file: magic number mismatch\n");
+		exit(1);
+	}
+
+	// if the segment lengths doesn't match the file size
+	if (qvmsize != sizeof(vmheader_t) + header->codelength + header->datalen + header->litlen) {
+		printf("Invalid QVM file: file size doesn't match segment lengths\n");
 		exit(1);
 	}
 
 	// if the header has false code segment info, abort
-	if (header->codeoffset > qvmsize || header->codeoffset + header->codelength > qvmsize) {
-		printf("Invalid QVM file, aborting\n");
+	if (header->codeoffset < sizeof(vmheader_t) || header->codeoffset > qvmsize || header->codeoffset + header->codelength > qvmsize) {
+		printf("Invalid QVM file: invalid code offset/length\n");
+		exit(1);
+	}
+
+	// if the header has false data segment info, abort
+	if (header->dataoffset < sizeof(vmheader_t) || header->dataoffset > qvmsize || header->dataoffset + header->datalen + header->litlen > qvmsize) {
+		printf("Invalid QVM file: invalid data offset/length\n");
 		exit(1);
 	}
 
@@ -309,7 +321,7 @@ int main(int argc, char* argv[]) {
 	// output header info
 	fprintf(htxt, "HEADER\n======\n");
 	fprintf(htxt, "MAGIC: %X\n", header->magic);
-	fprintf(htxt, "OPCOUNT: %i\n", header->opcount);
+	fprintf(htxt, "OPCOUNT: 0x%X (%i)\n", header->opcount, header->opcount);
 	fprintf(htxt, "CODEOFF: 0x%X (%i)\n", header->codeoffset, header->codeoffset);
 	fprintf(htxt, "CODELEN: 0x%X (%i)\n", header->codelength, header->codelength);
 	fprintf(htxt, "DATAOFF: 0x%X (%i)\n", header->dataoffset, header->dataoffset);
@@ -318,6 +330,7 @@ int main(int argc, char* argv[]) {
 	fprintf(htxt, "BSSLEN : 0x%X (%i)\n", header->bsslen, header->bsslen);
 	
 	fprintf(htxt, "\n\nCODE SEGMENT\n============\n");
+	fprintf(htxt, " INDEX ( OFFSET)\n");
 
 	// start pointer at start of code segment
 	p = qvm + header->codeoffset;
@@ -326,15 +339,13 @@ int main(int argc, char* argv[]) {
 	for (n = 0; n < header->opcount && p < qvm + header->codeoffset + header->codelength; ++n) {
 		int op = *p;
 
-		//  output offset
-		fprintf(htxt, "%06d ", n);
+		// output instruction index and instruction offset
+		fprintf(htxt, "%06d (%07d) ", n, p - (qvm + header->codeoffset));
+		
+		++p;
 
 		switch (op) {
-			// 4 byte arg ops
-			case OP_ENTER:
-			case OP_LEAVE:
-			case OP_CONST:
-			case OP_LOCAL:
+			// 4 byte arg ops - these are all jumps to an instruction
 			case OP_EQ:
 			case OP_NE:
 			case OP_LTI:
@@ -350,22 +361,33 @@ int main(int argc, char* argv[]) {
 			case OP_LTF:
 			case OP_LEF:
 			case OP_GTF:
-			case OP_GEF:
+			case OP_GEF: {
+				// if the jump target is invalid, output a ! symbol
+				int jmp_to = *(int*)p;
+				if (jmp_to < 0 || jmp_to > header->opcount)
+					fprintf(htxt, "%s %d !\n", opcodename(op), jmp_to);
+				else
+					fprintf(htxt, "%s %d\n", opcodename(op), jmp_to);
+				p += 4;
+				break;
+			}
+			// other 4 byte arg ops
+			case OP_ENTER:
+			case OP_LEAVE:
+			case OP_CONST:
+			case OP_LOCAL:
 			case OP_BLOCK_COPY:
-				++p;
 				fprintf(htxt, "%s %d\n", opcodename(op), *(int*)p);
 				p += 4;
 				break;
 			// 1 byte arg ops
 			case OP_ARG:
-				++p;
 				fprintf(htxt, "%s %d\n", opcodename(op), *p);
 				++p;
 				break;
 			// no arg op
 			default:
 				fprintf(htxt, "%s\n", opcodename(op));
-				++p;
 				break;
 		}
 	}
