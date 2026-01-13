@@ -1,3 +1,7 @@
+*.qvm
+*.map
+*.qvm.txt
+
 # Intellisense
 *.ncb
 *.opt
