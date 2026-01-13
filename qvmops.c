@@ -120,6 +120,8 @@ static int process_code(FILE* h) {
 			symbol = find_code_symbol(index, -1);
 			if (symbol)
 				fputs(" ;", h);
+			else
+				fprintf(h, " ; START func%d", index);
 			while (symbol) {
 				fprintf(h, " START %s", symbol->symbol);
 				symbol = find_code_symbol(index, symbol->index);
@@ -133,6 +135,8 @@ static int process_code(FILE* h) {
 			symbol = find_code_symbol(last_enter_index, -1);
 			if (symbol)
 				fputs(" ;", h);
+			else
+				fprintf(h, " ; END func%d", last_enter_index);
 			while (symbol) {
 				fprintf(h, " END %s", symbol->symbol);
 				symbol = find_code_symbol(last_enter_index, symbol->index);
@@ -152,6 +156,12 @@ static int process_code(FILE* h) {
 			symbol = find_code_symbol(prev_instr->param, -1);
 			if (symbol)
 				fputs(" ;", h);
+			else {
+				if (prev_instr->param < 0)
+					fprintf(h, " ; > trap%d", -prev_instr->param - 1);
+				else
+					fprintf(h, " ; > func%d", prev_instr->param);
+			}
 			while (symbol) {
 				fprintf(h, " > %s", symbol->symbol);
 				symbol = find_code_symbol(prev_instr->param, symbol->index);
@@ -172,6 +182,14 @@ static int process_code(FILE* h) {
 			symbol = find_code_symbol(prev_instr->param, -1);
 			if (symbol)
 				fputs(" ;", h);
+			else {
+				for (int i = prev_instr->param; i >= 0; i--) {
+					if (instructions[i].opcode == OP_ENTER) {
+						fprintf(h, " ; > func%d+%d", i, prev_instr->param - i);
+						break;
+					}
+				}
+			}
 			while (symbol) {
 				fprintf(h, " > %s+%d", symbol->symbol, prev_instr->param - symbol->offset);
 				next_instr = &instructions[prev_instr->param + 1];
@@ -204,6 +222,14 @@ static int process_code(FILE* h) {
 			symbol = find_code_symbol(instr->param, -1);
 			if (symbol)
 				fputs(" ;", h);
+			else {
+				for (int i = instr->param; i >= 0; i--) {
+					if (instructions[i].opcode == OP_ENTER) {
+						fprintf(h, " ; > func%d+%d", i, instr->param - i);
+						break;
+					}
+				}
+			}
 			while (symbol) {
 				fprintf(h, " %s+%d", symbol->symbol, instr->param - symbol->offset);
 				next_instr = &instructions[instr->param + 1];
