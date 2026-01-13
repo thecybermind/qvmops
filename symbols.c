@@ -113,14 +113,9 @@ symbolmap_t* find_data_symbol(int offset, int after) {
 		if (symbols[segment][i].offset == offset)
 			return &symbols[segment][i];
 
-		if (segment == SEGMENT_LIT) {
-			// TODO find a possible string literal that starts here
-		}
-		else {
-			if (symbols[segment][i].offset < offset) {
-				if (likely_symbol < 0 || symbols[segment][i].offset > symbols[segment][likely_symbol].offset)
-					likely_symbol = i;
-			}
+		if (symbols[segment][i].offset < offset) {
+			if (likely_symbol < 0 || symbols[segment][i].offset > symbols[segment][likely_symbol].offset)
+				likely_symbol = i;
 		}
 	}
 

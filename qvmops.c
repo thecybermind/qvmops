@@ -22,200 +22,7 @@ Created By:
 #include "qvmops.h"
 
 
-int process(const char* file) {
-	FILE* h;
-	int last_enter_index = -1;
-	
-	h = fopen(file, "w");
-	if (!h || ferror(h)) {
-		fprintf(stderr, "File not found: %s\n", file);
-		goto fail;
-	}
-
-	// output header info
-	fprintf(h, "HEADER\n======\n");
-	fprintf(h, "MAGIC: %X\n", header.magic);
-	fprintf(h, "OPCOUNT: 0x%X (%i)\n", header.opcount, header.opcount);
-	fprintf(h, "CODEOFF: 0x%X (%i)\n", header.codeoffset, header.codeoffset);
-	fprintf(h, "CODELEN: 0x%X (%i)\n", header.codelength, header.codelength);
-	fprintf(h, "DATAOFF: 0x%X (%i)\n", header.dataoffset, header.dataoffset);
-	fprintf(h, "DATALEN: 0x%X (%i)\n", header.datalen, header.datalen);
-	fprintf(h, "LITLEN : 0x%X (%i)\n", header.litlen, header.litlen);
-	fprintf(h, "BSSLEN : 0x%X (%i)\n", header.bsslen, header.bsslen);
-
-	fprintf(h, "\n\nCODE SEGMENT\n============\n");
-	fprintf(h, " INDEX OFFSETX/OFFSET INSTR     PARAM\n");
-
-	// output code info
-	for (int index = 0; index < instructioncount; index++) {
-		instruction_t* instr = &instructions[index];
-		
-		fprintf(h, "%06d %07x/%06d %-9s", index, instr->offset, instr->offset, opcodename(instr->opcode));
-
-		if (opcodeparamsize(instr->opcode))
-			fprintf(h, " %-10d", instr->param);
-		else
-			fputs("           ", h);
-
-		switch (instr->opcode) {
-		case OP_ENTER: {
-			symbolmap_t* symbol;
-			last_enter_index = index;
-			symbol = find_code_symbol(index, -1);
-			if (symbol)
-				fputs(" ;", h);
-			while (symbol) {
-				fprintf(h, " START %s", symbol->symbol);
-				symbol = find_code_symbol(index, symbol->index);
-			}
-			break;
-		}
-		case OP_LEAVE: {
-			symbolmap_t* symbol;
-			if (last_enter_index < 0)
-				break;
-			symbol = find_code_symbol(last_enter_index, -1);
-			if (symbol)
-				fputs(" ;", h);
-			while (symbol) {
-				fprintf(h, " END %s", symbol->symbol);
-				symbol = find_code_symbol(last_enter_index, symbol->index);
-			}
-			break;
-		}
-		case OP_CALL: {
-			instruction_t* prev_instr;
-			symbolmap_t* symbol;
-			if (index == 0)
-				break;
-			prev_instr = &instructions[index - 1];
-			if (prev_instr->opcode != OP_CONST)
-				break;
-			if (prev_instr->param >= instructioncount)
-				break;
-			symbol = find_code_symbol(prev_instr->param, -1);
-			if (symbol)
-				fputs(" ;", h);
-			while (symbol) {
-				fprintf(h, " %s", symbol->symbol);
-				symbol = find_code_symbol(prev_instr->param, symbol->index);
-			}
-			break;
-		}
-		case OP_JUMP: {
-			instruction_t* prev_instr;
-			instruction_t* next_instr;
-			symbolmap_t* symbol;
-			if (index == 0)
-				break;
-			prev_instr = &instructions[index - 1];
-			if (prev_instr->opcode != OP_CONST)
-				break;
-			if (prev_instr->param >= instructioncount)
-				break;
-			symbol = find_code_symbol(prev_instr->param, -1);
-			if (symbol)
-				fputs(" ;", h);
-			while (symbol) {
-				fprintf(h, " %s+%d", symbol->symbol, prev_instr->param - symbol->offset);
-				next_instr = &instructions[prev_instr->param + 1];
-				if (next_instr->opcode == OP_LEAVE)
-					fputs(" (return)", h);
-				symbol = find_code_symbol(prev_instr->param, symbol->index);
-			}
-			break;
-		}
-		case OP_EQ:
-		case OP_NE:
-		case OP_LTI:
-		case OP_LEI:
-		case OP_GTI:
-		case OP_GEI:
-		case OP_LTU:
-		case OP_LEU:
-		case OP_GTU:
-		case OP_GEU:
-		case OP_EQF:
-		case OP_NEF:
-		case OP_LTF:
-		case OP_LEF:
-		case OP_GTF:
-		case OP_GEF: {
-			instruction_t* next_instr;
-			symbolmap_t* symbol;
-			if (index == 0)
-				break;
-			symbol = find_code_symbol(instr->param, -1);
-			if (symbol)
-				fputs(" ;", h);
-			while (symbol) {
-				fprintf(h, " %s+%d", symbol->symbol, instr->param - symbol->offset);
-				next_instr = &instructions[instr->param + 1];
-				if (next_instr->opcode == OP_LEAVE)
-					fputs(" (return)", h);
-				symbol = find_code_symbol(instr->param, symbol->index);
-			}
-			break;
-		}
-		case OP_CONST: {
-			instruction_t* next_instr;
-			symbolmap_t* symbol;
-			// ignore small literals, not likely memory accesses or jumps
-			if (instr->param < 100)
-				break;
-			if (instr->param > instructioncount && instr->param > datasize[SEGMENT_DATA] + datasize[SEGMENT_LIT] + datasize[SEGMENT_BSS])
-				break;
-			if (index == instructioncount - 1)
-				break;
-			next_instr = &instructions[index + 1];
-			if (next_instr->opcode == OP_CALL ||
-				next_instr->opcode == OP_LOAD1 ||
-				next_instr->opcode == OP_LOAD2 ||
-				next_instr->opcode == OP_LOAD4 ||
-				next_instr->opcode == OP_JUMP ||
-				0)
-				break;
-			symbol = find_data_symbol(instr->param, -1);
-			if (symbol)
-				fputs(" ;", h);
-			while (symbol) {
-				fprintf(h, " %s+%d (?)", symbol->symbol, instr->param - symbol->offset);
-				symbol = find_data_symbol(instr->param, symbol->index);
-			}
-			break;
-		}
-		case OP_LOAD1:
-		case OP_LOAD2:
-		case OP_LOAD4: {
-			symbolmap_t* symbol;
-			if (index == 0)
-				break;
-			instruction_t* prev_instr = &instructions[index - 1];
-			if (prev_instr->opcode != OP_CONST)
-				break;
-			symbol = find_data_symbol(prev_instr->param, -1);
-			if (symbol)
-				fputs(" ;", h);
-			while (symbol) {
-				fprintf(h, " %s", symbol->symbol);
-				symbol = find_data_symbol(prev_instr->param, symbol->index);
-			}
-			break;
-		}
-		default:
-			;
-		}
-
-		fprintf(h, "\n");
-		fflush(h);
-	}
-	
-	return 1;
-fail:
-	if (h)
-		fclose(h);
-	return 0;
-}
+static int process(const char* file);
 
 
 int main(int argc, char* argv[]) {
@@ -270,4 +77,274 @@ int main(int argc, char* argv[]) {
 	printf("%s written\n", outfile);
 
 	return ret;
+}
+
+
+// output header
+static void process_header(FILE* h) {
+	// output header info
+	fputs("HEADER\n======\n", h);
+	fprintf(h, "MAGIC: %X\n", header.magic);
+	fprintf(h, "OPCOUNT: 0x%X (%i)\n", header.opcount, header.opcount);
+	fprintf(h, "CODEOFF: 0x%X (%i)\n", header.codeoffset, header.codeoffset);
+	fprintf(h, "CODELEN: 0x%X (%i)\n", header.codelength, header.codelength);
+	fprintf(h, "DATAOFF: 0x%X (%i)\n", header.dataoffset, header.dataoffset);
+	fprintf(h, "DATALEN: 0x%X (%i)\n", header.datalen, header.datalen);
+	fprintf(h, "LITLEN : 0x%X (%i)\n", header.litlen, header.litlen);
+	fprintf(h, "BSSLEN : 0x%X (%i)\n", header.bsslen, header.bsslen);
+}
+
+
+// output code segment
+static int process_code(FILE* h) {
+	int last_enter_index = -1;
+
+	fputs("\n\nCODE SEGMENT\n============\n", h);
+	fputs(" INDEX OFFSETX/OFFSET INSTR     PARAM\n", h);
+
+	// output code info
+	for (int index = 0; index < instructioncount; index++) {
+		instruction_t* instr = &instructions[index];
+
+		fprintf(h, "%06d %07x/%06d %-9s", index, instr->offset, instr->offset, opcodename(instr->opcode));
+
+		if (opcodeparamsize(instr->opcode))
+			fprintf(h, " %-10d", instr->param);
+		else
+			fputs("           ", h);
+
+		switch (instr->opcode) {
+		case OP_ENTER: {
+			symbolmap_t* symbol;
+			last_enter_index = index;
+			symbol = find_code_symbol(index, -1);
+			if (symbol)
+				fputs(" ;", h);
+			while (symbol) {
+				fprintf(h, " START %s", symbol->symbol);
+				symbol = find_code_symbol(index, symbol->index);
+			}
+			break;
+		}
+		case OP_LEAVE: {
+			symbolmap_t* symbol;
+			if (last_enter_index < 0)
+				break;
+			symbol = find_code_symbol(last_enter_index, -1);
+			if (symbol)
+				fputs(" ;", h);
+			while (symbol) {
+				fprintf(h, " END %s", symbol->symbol);
+				symbol = find_code_symbol(last_enter_index, symbol->index);
+			}
+			break;
+		}
+		case OP_CALL: {
+			instruction_t* prev_instr;
+			symbolmap_t* symbol;
+			if (index == 0)
+				break;
+			prev_instr = &instructions[index - 1];
+			if (prev_instr->opcode != OP_CONST)
+				break;
+			if (prev_instr->param >= instructioncount)
+				break;
+			symbol = find_code_symbol(prev_instr->param, -1);
+			if (symbol)
+				fputs(" ;", h);
+			while (symbol) {
+				fprintf(h, " > %s", symbol->symbol);
+				symbol = find_code_symbol(prev_instr->param, symbol->index);
+			}
+			break;
+		}
+		case OP_JUMP: {
+			instruction_t* prev_instr;
+			instruction_t* next_instr;
+			symbolmap_t* symbol;
+			if (index == 0)
+				break;
+			prev_instr = &instructions[index - 1];
+			if (prev_instr->opcode != OP_CONST)
+				break;
+			if (prev_instr->param >= instructioncount)
+				break;
+			symbol = find_code_symbol(prev_instr->param, -1);
+			if (symbol)
+				fputs(" ;", h);
+			while (symbol) {
+				fprintf(h, " > %s+%d", symbol->symbol, prev_instr->param - symbol->offset);
+				next_instr = &instructions[prev_instr->param + 1];
+				if (next_instr->opcode == OP_LEAVE)
+					fputs(" (return)", h);
+				symbol = find_code_symbol(prev_instr->param, symbol->index);
+			}
+			break;
+		}
+		case OP_EQ:
+		case OP_NE:
+		case OP_LTI:
+		case OP_LEI:
+		case OP_GTI:
+		case OP_GEI:
+		case OP_LTU:
+		case OP_LEU:
+		case OP_GTU:
+		case OP_GEU:
+		case OP_EQF:
+		case OP_NEF:
+		case OP_LTF:
+		case OP_LEF:
+		case OP_GTF:
+		case OP_GEF: {
+			instruction_t* next_instr;
+			symbolmap_t* symbol;
+			if (index == 0)
+				break;
+			symbol = find_code_symbol(instr->param, -1);
+			if (symbol)
+				fputs(" ;", h);
+			while (symbol) {
+				fprintf(h, " %s+%d", symbol->symbol, instr->param - symbol->offset);
+				next_instr = &instructions[instr->param + 1];
+				if (next_instr->opcode == OP_LEAVE)
+					fputs(" (return)", h);
+				symbol = find_code_symbol(instr->param, symbol->index);
+			}
+			break;
+		}
+		case OP_CONST: {
+			instruction_t* next_instr;
+			symbolmap_t* symbol;
+			// ignore small literals, not likely memory accesses or jumps
+			if (instr->param < 100)
+				break;
+			if (instr->param > instructioncount && instr->param > datasize[SEGMENT_DATA] + datasize[SEGMENT_LIT] + datasize[SEGMENT_BSS])
+				break;
+			if (index == instructioncount - 1)
+				break;
+			next_instr = &instructions[index + 1];
+			if (next_instr->opcode == OP_LOAD1 ||
+				next_instr->opcode == OP_LOAD2 ||
+				next_instr->opcode == OP_LOAD4) {
+				fprintf(h, " ; (%x)", instr->param);
+				break;
+			}
+			if (next_instr->opcode == OP_CALL ||
+				next_instr->opcode == OP_JUMP)
+				break;
+			symbol = find_data_symbol(instr->param, -1);
+			if (symbol)
+				fputs(" ;", h);
+			while (symbol) {
+				fprintf(h, " %s+%d (?)", symbol->symbol, instr->param - symbol->offset);
+				symbol = find_data_symbol(instr->param, symbol->index);
+			}
+			break;
+		}
+		case OP_LOAD1:
+		case OP_LOAD2:
+		case OP_LOAD4: {
+			symbolmap_t* symbol;
+			if (index == 0)
+				break;
+			instruction_t* prev_instr = &instructions[index - 1];
+			if (prev_instr->opcode != OP_CONST)
+				break;
+			symbol = find_data_symbol(prev_instr->param, -1);
+			if (symbol)
+				fputs(" ;", h);
+			while (symbol) {
+				fprintf(h, " %s+%d", symbol->symbol, prev_instr->param - symbol->offset);
+				symbol = find_data_symbol(prev_instr->param, symbol->index);
+			}
+			break;
+		}
+		default:
+			;
+		}
+
+		fputs("\n", h);
+		fflush(h);
+	}
+}
+
+
+static void process_data(FILE* h) {
+
+}
+
+
+static void process_data_hex(FILE* h) {
+	uint8_t* p;
+	fputs("\n\nDATA SEGMENT\n============\n", h);
+	fprintf(h, "LIT segment begins at offset %X (look for | in row %X)\n", datasize[SEGMENT_DATA], datasize[SEGMENT_DATA] & 0xFFFFFFE0);
+
+	// start pointer at start of data segment
+	p = data;
+
+	// loop through each byte in data segment
+	while (p < data + datasize[SEGMENT_DATA] + datasize[SEGMENT_LIT]) {
+		// print offset
+		fprintf(h, "%04X ", p - data);
+
+		// print hex values
+		for (int b = 0; b < DATA_ROW_LEN; b++) {
+			// halfway through the row, print a gap
+			if (b == DATA_ROW_LEN / 2)
+				fputs("   ", h);
+			// if this row runs out of data before the end, print empty spaces
+			if (p + b >= data + datasize[SEGMENT_DATA] + datasize[SEGMENT_LIT])
+				fputs("   ", h);
+			// if this is the split between data and lit, put a bar
+			else if (p + b == data + datasize[SEGMENT_DATA])
+				fprintf(h, "|%02X", p[b]);
+			else
+				fprintf(h, " %02X", p[b]);
+		}
+
+		fputs("    ", h);
+
+		// print characters
+		for (int b = 0; b < DATA_ROW_LEN; b++) {
+			// halfway through the row, print a gap
+			if (b == DATA_ROW_LEN / 2)
+				fprintf(h, " ");
+			// if this row runs out of data before the end, print empty spaces
+			if (p + b >= data + datasize[SEGMENT_DATA] + datasize[SEGMENT_LIT])
+				fprintf(h, " ");
+			else
+				fprintf(h, "%c", printablec(p[b]));
+		}
+
+		fprintf(h, "\n");
+		fflush(h);
+
+		p += DATA_ROW_LEN;
+	}
+}
+
+
+static int process(const char* file) {
+	FILE* h;
+
+	h = fopen(file, "w");
+	if (!h || ferror(h)) {
+		fprintf(stderr, "File not found: %s\n", file);
+		goto fail;
+	}
+
+	process_header(h);
+
+	process_code(h);
+
+	process_data(h);
+
+	process_data_hex(h);
+
+	return 1;
+fail:
+	if (h)
+		fclose(h);
+	return 0;
 }

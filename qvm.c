@@ -20,7 +20,7 @@ vmheader_t header;
 instruction_t instructions[MAX_INSTRUCTIONS];
 int instructioncount;
 
-uint8_t* data[SEGMENT_COUNT];
+uint8_t* data;
 int datasize[SEGMENT_COUNT];
 
 
@@ -115,10 +115,13 @@ int parse_qvm(const char* file) {
 
 	// copy data segments for later examination
 	datasize[SEGMENT_DATA] = header.datalen;
-	data[SEGMENT_DATA] = malloc(datasize[SEGMENT_DATA]);
-
 	datasize[SEGMENT_LIT] = header.litlen;
-	data[SEGMENT_LIT] = malloc(datasize[SEGMENT_LIT]);
+	datasize[SEGMENT_BSS] = header.bsslen;
+
+	data = malloc(header.datalen + header.litlen);
+	memcpy(data, qvm + header.dataoffset, header.datalen + header.litlen);
+
+	free(qvm);
 
 	return 1;
 fail:

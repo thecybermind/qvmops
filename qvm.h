@@ -120,7 +120,7 @@ typedef struct instruction_s {
 extern instruction_t instructions[MAX_INSTRUCTIONS];
 extern int instructioncount;
 
-extern uint8_t* data[SEGMENT_COUNT];
+extern uint8_t* data;
 extern int datasize[SEGMENT_COUNT];
 
 // fill instructions array
