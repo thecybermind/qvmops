@@ -179,7 +179,7 @@ int process(const char* file) {
 			if (symbol)
 				fputs(" ;", h);
 			while (symbol) {
-				fprintf(h, " %s(?)", symbol->symbol);
+				fprintf(h, " %s+%d (?)", symbol->symbol, instr->param - symbol->offset);
 				symbol = find_data_symbol(instr->param, symbol->index);
 			}
 			break;
