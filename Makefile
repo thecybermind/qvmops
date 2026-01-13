@@ -1,8 +1,11 @@
 
 CC=gcc
 
-qvmops: main.o
-	$(CC) -m32 -o qvmops main.o
+SRC_C   := $(wildcard *.c)
+OBJ     := $(SRC_C:%.c=%.o)
+
+qvmops: $(OBJ)
+	$(CC) -m32 -o qvmops $(OBJ)
   
-main.o: main.c
-	$(CC) -m32 -o main.o -c main.c
+%.o: %.c
+	$(CC) -m32 -o $@ -c $<

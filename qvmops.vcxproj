@@ -143,7 +143,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="main.c" />
+    <ClCompile Include="qvm.c" />
+    <ClCompile Include="qvmops.c" />
+    <ClCompile Include="symbols.c" />
+    <ClCompile Include="util.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="qvm.h" />
+    <ClInclude Include="qvmops.h" />
+    <ClInclude Include="symbols.h" />
+    <ClInclude Include="util.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
