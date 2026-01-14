@@ -3,5 +3,5 @@ mkdir -p package
 cd package
 rm *
 cp ../qvmops ./
-cp ../qagame.qvm.txt ./
+cp ../readme.md ./
 cd ..
