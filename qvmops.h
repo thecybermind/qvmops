@@ -19,7 +19,7 @@ Created By:
 #include <errno.h>
 #include <stdint.h>
 
-#include "qvm.h"
+#define QVMOPS_VERSION "1.1.2"
 
 // length in bytes of each row of the "hex editor" view of the data segment
 #define DATA_ROW_LEN	32

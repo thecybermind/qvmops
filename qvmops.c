@@ -9,8 +9,6 @@ Created By:
 
 */
 
-#define QVMOPS_VERSION "1.1.2"
-
 #define _CRT_SECURE_NO_WARNINGS 1
 #include <stdio.h>
 #include <stdlib.h>
