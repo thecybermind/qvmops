@@ -71,6 +71,7 @@ int main(int argc, char* argv[]) {
 	// open output file for writing
 	strncpyz(outfile, argv[1], sizeof outfile);
 	strncatz(outfile, ".txt", sizeof(outfile));
+	printf("Processing output file %s...\n", outfile);
 	process(outfile);
 
 	// cleanup
@@ -82,6 +83,7 @@ int main(int argc, char* argv[]) {
 
 // output header
 static void process_header(FILE* h) {
+	puts("Processing header...");
 	// output header info
 	fputs("HEADER\n======\n", h);
 	fprintf(h, "MAGIC: %X\n", header.magic);
@@ -99,6 +101,7 @@ static void process_header(FILE* h) {
 static int process_code(FILE* h) {
 	int last_enter_index = -1;
 
+	puts("Processing code segment...");
 	fputs("\n\nCODE SEGMENT\n============\n", h);
 	fputs(" INDEX OFFSETX/OFFSET INSTR     PARAM\n", h);
 
@@ -231,7 +234,7 @@ static int process_code(FILE* h) {
 				}
 			}
 			while (symbol) {
-				fprintf(h, " %s+%d", symbol->symbol, instr->param - symbol->offset);
+				fprintf(h, " > %s+%d", symbol->symbol, instr->param - symbol->offset);
 				next_instr = &instructions[instr->param + 1];
 				if (next_instr->opcode == OP_LEAVE)
 					fputs(" (return)", h);
@@ -243,7 +246,7 @@ static int process_code(FILE* h) {
 			instruction_t* next_instr;
 			symbolmap_t* symbol;
 			// ignore small literals, not likely memory accesses or jumps
-			if (instr->param < 100)
+			if (instr->param < 1025)
 				break;
 			if (instr->param > instructioncount && instr->param > datasize[SEGMENT_DATA] + datasize[SEGMENT_LIT] + datasize[SEGMENT_BSS])
 				break;
@@ -297,12 +300,16 @@ static int process_code(FILE* h) {
 
 
 static void process_data(FILE* h) {
+	if (symbolcount[SEGMENT_DATA] + symbolcount[SEGMENT_LIT] + symbolcount[SEGMENT_BSS] == 0)
+		return;
 
+	puts("Processing data segment symbols...");
 }
 
 
 static void process_data_hex(FILE* h) {
 	uint8_t* p;
+	puts("Processing data segment hex view...");
 	fputs("\n\nDATA SEGMENT\n============\n", h);
 	fprintf(h, "LIT segment begins at offset %X (look for | in row %X)\n", datasize[SEGMENT_DATA], datasize[SEGMENT_DATA] & 0xFFFFFFE0);
 

@@ -54,6 +54,7 @@ void parse_map(const char* file) {
 
 		// store in list
 		symbols[segment][symbolcount[segment]] = symbol;
+
 		symbolcount[segment]++;
 	}
 
@@ -152,6 +153,9 @@ static symbolmap_t parse_map_line_ex(char* line) {
 	if (ret.segment == 0) {
 		// c or d
 		if (!strcmp(buf[2], "LINE")) {
+			// todo: fix line?
+			ret.segment = -1;
+			return ret;
 			// d
 			if (atoi(buf[3]) == 0) {
 				ret.segment = -1;
