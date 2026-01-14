@@ -100,16 +100,21 @@ static void process_header(FILE* h) {
 // output code segment
 static int process_code(FILE* h) {
 	int last_enter_index = -1;
+	int semicolon = 0;
+	symbolmap_t* symbol;
+	instruction_t* instr = NULL;
 
 	puts("Processing code segment...");
 	fputs("\n\nCODE SEGMENT\n============\n", h);
-	fputs(" INDEX OFFSETX/OFFSET INSTR     PARAM\n", h);
+	fputs(" INDEX(XINDEX) OFFSET(XOFFSET) INSTR     PARAM\n", h);
 
 	// output code info
 	for (int index = 0; index < instructioncount; index++) {
-		instruction_t* instr = &instructions[index];
+		instr = &instructions[index];
 
-		fprintf(h, "%06d %07x/%06d %-9s", index, instr->offset, instr->offset, opcodename(instr->opcode));
+		semicolon = 0;
+
+		fprintf(h, "%06d(%06x) %06d(%07x) %-9s", index, index, instr->offset, instr->offset, opcodename(instr->opcode));
 
 		if (opcodeparamsize(instr->opcode))
 			fprintf(h, " %-10d", instr->param);
@@ -118,13 +123,13 @@ static int process_code(FILE* h) {
 
 		switch (instr->opcode) {
 		case OP_ENTER: {
-			symbolmap_t* symbol;
 			last_enter_index = index;
 			symbol = find_code_symbol(index, -1);
 			if (symbol)
 				fputs(" ;", h);
 			else
 				fprintf(h, " ; START func%d", index);
+			semicolon = 1;
 			while (symbol) {
 				fprintf(h, " START %s", symbol->symbol);
 				symbol = find_code_symbol(index, symbol->index);
@@ -132,7 +137,6 @@ static int process_code(FILE* h) {
 			break;
 		}
 		case OP_LEAVE: {
-			symbolmap_t* symbol;
 			if (last_enter_index < 0)
 				break;
 			symbol = find_code_symbol(last_enter_index, -1);
@@ -140,6 +144,7 @@ static int process_code(FILE* h) {
 				fputs(" ;", h);
 			else
 				fprintf(h, " ; END func%d", last_enter_index);
+			semicolon = 1;
 			while (symbol) {
 				fprintf(h, " END %s", symbol->symbol);
 				symbol = find_code_symbol(last_enter_index, symbol->index);
@@ -148,7 +153,6 @@ static int process_code(FILE* h) {
 		}
 		case OP_CALL: {
 			instruction_t* prev_instr;
-			symbolmap_t* symbol;
 			if (index == 0)
 				break;
 			prev_instr = &instructions[index - 1];
@@ -165,6 +169,7 @@ static int process_code(FILE* h) {
 				else
 					fprintf(h, " ; > func%d", prev_instr->param);
 			}
+			semicolon = 1;
 			while (symbol) {
 				fprintf(h, " > %s", symbol->symbol);
 				symbol = find_code_symbol(prev_instr->param, symbol->index);
@@ -174,7 +179,6 @@ static int process_code(FILE* h) {
 		case OP_JUMP: {
 			instruction_t* prev_instr;
 			instruction_t* next_instr;
-			symbolmap_t* symbol;
 			if (index == 0)
 				break;
 			prev_instr = &instructions[index - 1];
@@ -183,12 +187,15 @@ static int process_code(FILE* h) {
 			if (prev_instr->param >= instructioncount)
 				break;
 			symbol = find_code_symbol(prev_instr->param, -1);
-			if (symbol)
+			if (symbol) {
 				fputs(" ;", h);
+				semicolon = 1;
+			}
 			else {
 				for (int i = prev_instr->param; i >= 0; i--) {
 					if (instructions[i].opcode == OP_ENTER) {
 						fprintf(h, " ; > func%d+%d", i, prev_instr->param - i);
+						semicolon = 1;
 						break;
 					}
 				}
@@ -219,16 +226,18 @@ static int process_code(FILE* h) {
 		case OP_GTF:
 		case OP_GEF: {
 			instruction_t* next_instr;
-			symbolmap_t* symbol;
 			if (index == 0)
 				break;
 			symbol = find_code_symbol(instr->param, -1);
-			if (symbol)
+			if (symbol) {
 				fputs(" ;", h);
+				semicolon = 1;
+			}
 			else {
 				for (int i = instr->param; i >= 0; i--) {
 					if (instructions[i].opcode == OP_ENTER) {
 						fprintf(h, " ; > func%d+%d", i, instr->param - i);
+						semicolon = 1;
 						break;
 					}
 				}
@@ -244,7 +253,6 @@ static int process_code(FILE* h) {
 		}
 		case OP_CONST: {
 			instruction_t* next_instr;
-			symbolmap_t* symbol;
 			// ignore small literals, not likely memory accesses or jumps
 			if (instr->param < 1025)
 				break;
@@ -257,14 +265,17 @@ static int process_code(FILE* h) {
 				next_instr->opcode == OP_LOAD2 ||
 				next_instr->opcode == OP_LOAD4) {
 				fprintf(h, " ; (%x)", instr->param);
+				semicolon = 1;
 				break;
 			}
 			if (next_instr->opcode == OP_CALL ||
 				next_instr->opcode == OP_JUMP)
 				break;
 			symbol = find_data_symbol(instr->param, -1);
-			if (symbol)
+			if (symbol) {
 				fputs(" ;", h);
+				semicolon = 1;
+			}
 			while (symbol) {
 				fprintf(h, " %s+%d (?)", symbol->symbol, instr->param - symbol->offset);
 				symbol = find_data_symbol(instr->param, symbol->index);
@@ -274,15 +285,16 @@ static int process_code(FILE* h) {
 		case OP_LOAD1:
 		case OP_LOAD2:
 		case OP_LOAD4: {
-			symbolmap_t* symbol;
 			if (index == 0)
 				break;
 			instruction_t* prev_instr = &instructions[index - 1];
 			if (prev_instr->opcode != OP_CONST)
 				break;
 			symbol = find_data_symbol(prev_instr->param, -1);
-			if (symbol)
+			if (symbol) {
 				fputs(" ;", h);
+				semicolon = 1;
+			}
 			while (symbol) {
 				fprintf(h, " %s+%d", symbol->symbol, prev_instr->param - symbol->offset);
 				symbol = find_data_symbol(prev_instr->param, symbol->index);
@@ -291,6 +303,15 @@ static int process_code(FILE* h) {
 		}
 		default:
 			;
+		}
+
+		// add line number if it exists
+		symbol = find_line(index, -1);
+		if (symbol && !semicolon)
+			fputs(" ;", h);
+		while (symbol) {
+			fprintf(h, " [%s]", symbol->symbol);
+			symbol = find_line(index, symbol->index);
 		}
 
 		fputs("\n", h);

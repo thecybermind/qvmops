@@ -20,6 +20,8 @@ Created By:
 symbolmap_t symbols[SEGMENT_COUNT][MAX_SYMBOLS];
 int symbolcount[SEGMENT_COUNT];
 
+symbolmap_t lines[MAX_LINES];
+int linecount;
 
 static symbolmap_t parse_map_line_ex(char* line);
 static symbolmap_t parse_map_line(char* line);
@@ -52,10 +54,14 @@ void parse_map(const char* file) {
 
 		symbol.index = symbolcount[segment];
 
-		// store in list
 		symbols[segment][symbolcount[segment]] = symbol;
 
 		symbolcount[segment]++;
+		
+		if (symbolcount[segment] >= MAX_SYMBOLS) {
+			fprintf(stderr, "File not found: %s\n", file);
+			goto fail;
+		}
 	}
 
 	fclose(h);
@@ -64,6 +70,21 @@ void parse_map(const char* file) {
 fail:
 	if (h)
 		fclose(h);
+}
+
+
+// find a line by instruction index (after given symbol index)
+symbolmap_t* find_line(int index, int after) {
+	if (!linecount || after < -1 || after > linecount)
+		return NULL;
+
+	for (int i = after + 1; i < linecount; i++) {
+		if (lines[i].offset == index)
+			return &lines[i];
+
+	}
+
+	return NULL;
 }
 
 
@@ -153,9 +174,6 @@ static symbolmap_t parse_map_line_ex(char* line) {
 	if (ret.segment == 0) {
 		// c or d
 		if (!strcmp(buf[2], "LINE")) {
-			// todo: fix line?
-			ret.segment = -1;
-			return ret;
 			// d
 			if (atoi(buf[3]) == 0) {
 				ret.segment = -1;
@@ -165,8 +183,17 @@ static symbolmap_t parse_map_line_ex(char* line) {
 			else {
 				strncatz(buf[2], " ", sizeof(buf[2]));
 				strncatz(buf[2], buf[3], sizeof(buf[2]));
-				ret.offset = strtoul(buf[1], NULL, 16);
-				ret.symbol = _strdup(buf[2]);
+				if (linecount >= MAX_LINES) {
+					ret.segment = -1;
+					return ret;
+				}
+				lines[linecount].index = linecount;
+				lines[linecount].offset = strtoul(buf[1], NULL, 16);
+				lines[linecount].symbol = _strdup(buf[2]);
+				linecount++;
+				ret.segment = -1;
+				return ret;
+				
 			}
 		}
 		// a or b
