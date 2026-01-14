@@ -32,6 +32,8 @@ char* strrstr(const char* str, const char* substr);
 #define MINIMUM_BUFFER_SIZE 128
 typedef intptr_t ssize_t;
 ssize_t getline(char** lineptr, size_t* n, FILE* stream);
+
+#define strdup _strdup
 #endif
 
 #endif // __QVMOPS_UTIL_H__

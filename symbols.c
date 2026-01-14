@@ -189,7 +189,7 @@ static symbolmap_t parse_map_line_ex(char* line) {
 				}
 				lines[linecount].index = linecount;
 				lines[linecount].offset = strtoul(buf[1], NULL, 16);
-				lines[linecount].symbol = _strdup(buf[2]);
+				lines[linecount].symbol = strdup(buf[2]);
 				linecount++;
 				ret.segment = -1;
 				return ret;
@@ -202,12 +202,12 @@ static symbolmap_t parse_map_line_ex(char* line) {
 			// a
 			if (i < 0) {
 				ret.offset = i;
-				ret.symbol = _strdup(buf[3]);
+				ret.symbol = strdup(buf[3]);
 			}
 			// b
 			else {
 				ret.offset = strtoul(buf[1], NULL, 16);
-				ret.symbol = _strdup(buf[3]);
+				ret.symbol = strdup(buf[3]);
 			}
 		}
 	}
@@ -225,7 +225,7 @@ static symbolmap_t parse_map_line_ex(char* line) {
 		if (ret.segment == 2 && !strncmp(buf[3], "_stack", 6))
 			ret.segment = 3;
 		ret.offset = strtoul(buf[1], NULL, 16);
-		ret.symbol = _strdup(buf[3]);
+		ret.symbol = strdup(buf[3]);
 	}
 	else {
 		ret.segment = -1;
@@ -253,6 +253,6 @@ static symbolmap_t parse_map_line(char* line) {
 
 	ret.segment = atoi(buf[0]);
 	ret.offset = strtoul(buf[1], NULL, 16);
-	ret.symbol = _strdup(buf[2]);
+	ret.symbol = strdup(buf[2]);
 	return ret;
 }
