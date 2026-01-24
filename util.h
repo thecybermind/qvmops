@@ -10,8 +10,8 @@ Created By:
 */
 
 #pragma once
-#ifndef __QVMOPS_UTIL_H__
-#define __QVMOPS_UTIL_H__
+#ifndef QVMOPS_UTIL_H
+#define QVMOPS_UTIL_H
 
 #include <stdint.h>
 #include <stdio.h>
@@ -36,4 +36,4 @@ ssize_t getline(char** lineptr, size_t* n, FILE* stream);
 #define strdup _strdup
 #endif
 
-#endif // __QVMOPS_UTIL_H__
+#endif // QVMOPS_UTIL_H

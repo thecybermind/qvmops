@@ -11,8 +11,8 @@ Created By:
 
 #pragma once
 
-#ifndef __QVMOPS_QVMOPS_H__
-#define __QVMOPS_QVMOPS_H__
+#ifndef QVMOPS_QVMOPS_H
+#define QVMOPS_QVMOPS_H
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -24,4 +24,4 @@ Created By:
 // length in bytes of each row of the "hex editor" view of the data segment
 #define DATA_ROW_LEN	32
 
-#endif // __QVMOPS_QVMOPS_H__
+#endif // QVMOPS_QVMOPS_H

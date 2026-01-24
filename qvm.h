@@ -10,8 +10,8 @@ Created By:
 */
 
 #pragma once
-#ifndef __QVMOPS_QVM_H__
-#define __QVMOPS_QVM_H__
+#ifndef QVMOPS_QVM_H
+#define QVMOPS_QVM_H
 
 #include <stdint.h>
 
@@ -127,4 +127,4 @@ extern int datasize[SEGMENT_COUNT];
 int parse_qvm(const char* file);
 
 
-#endif // __QVMOPS_QVM_H__
+#endif // QVMOPS_QVM_H

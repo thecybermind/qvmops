@@ -10,8 +10,8 @@ Created By:
 */
 
 #pragma once
-#ifndef __QVMOPS_SYMBOLS_H__
-#define __QVMOPS_SYMBOLS_H__
+#ifndef QVMOPS_SYMBOLS_H
+#define QVMOPS_SYMBOLS_H
 
 #include "qvm.h"
 
@@ -37,4 +37,4 @@ symbolmap_t* find_data_symbol(int offset, int after);
 // fill symbols array with data from map file
 void parse_map(const char* file);
 
-#endif // __QVMOPS_SYMBOLS_H__
+#endif // QVMOPS_SYMBOLS_H
