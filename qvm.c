@@ -17,6 +17,9 @@ Created By:
 #include "qvm.h"
 
 vmheader_t header;
+#ifdef QVMOPS_VER2
+vmheader2_t header2;
+#endif
 
 instruction_t instructions[MAX_INSTRUCTIONS];
 int instructioncount;
@@ -29,6 +32,7 @@ int parse_qvm(const char* file) {
 	FILE* h;
 	uint8_t* qvm;
 	int qvmsize;
+	int datalen;
 	uint8_t* p;
 	int n;
 
@@ -58,19 +62,18 @@ int parse_qvm(const char* file) {
 	fclose(h);
 	h = NULL;
 
-	memcpy(&header, qvm, sizeof(vmheader_t));
+	memcpy(&header, qvm, sizeof(header));
 
 	// if the magic number doesn't match, abort
-	if (header.magic != VM_MAGIC) {
+	if (header.magic != VM_MAGIC && header.magic != VM_MAGIC_VER2) {
 		fprintf(stderr, "Invalid QVM file: magic number mismatch\n");
 		goto fail;
 	}
 
-	// if the segment lengths doesn't match the file size
-	if (qvmsize != sizeof(vmheader_t) + header.codelength + header.datalen + header.litlen) {
-		fprintf(stderr, "Invalid QVM file: file size doesn't match segment lengths\n");
-		goto fail;
-	}
+#ifdef QVMOPS_VER2
+	if (header.magic == VM_MAGIC_VER2)
+		memcpy(&header2, qvm, sizeof(header2));
+#endif
 
 	// if the header has false code segment info, abort
 	if (header.codeoffset < sizeof(vmheader_t) || header.codeoffset > qvmsize || header.codeoffset + header.codelength > qvmsize) {
@@ -118,9 +121,28 @@ int parse_qvm(const char* file) {
 	datasize[SEGMENT_DATA] = header.datalen;
 	datasize[SEGMENT_LIT] = header.litlen;
 	datasize[SEGMENT_BSS] = header.bsslen;
+#ifdef QVMOPS_VER2
+	if (header.magic == VM_MAGIC_VER2)
+		datasize[SEGMENT_JTRG] = header2.jtrglen;
+#endif
 
-	data = malloc(header.datalen + header.litlen);
+	datalen = header.datalen + header.litlen;
+#ifdef QVMOPS_VER2
+	if (header.magic == VM_MAGIC_VER2)
+		datalen += header2.jtrglen;
+#endif
+
+	data = malloc(datalen);
+	if (!data)
+		goto fail;
 	memcpy(data, qvm + header.dataoffset, header.datalen + header.litlen);
+	
+#ifdef QVMOPS_VER2
+	if (header.magic == VM_MAGIC_VER2)
+		memcpy(data + header.datalen + header.litlen,
+			qvm + header.dataoffset + header.datalen + header.litlen,
+			header2.jtrglen);
+#endif
 
 	free(qvm);
 

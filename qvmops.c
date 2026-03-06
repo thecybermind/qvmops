@@ -84,7 +84,7 @@ static void process_header(FILE* h) {
 	puts("Processing header...");
 	// output header info
 	fputs("HEADER\n======\n", h);
-	fprintf(h, "MAGIC: %X\n", header.magic);
+	fprintf(h, "MAGIC: %X (%s)\n", header.magic, header.magic == VM_MAGIC ? "MAGIC" : "MAGIC_VER2");
 	fprintf(h, "OPCOUNT: 0x%X (%i)\n", header.opcount, header.opcount);
 	fprintf(h, "CODEOFF: 0x%X (%i)\n", header.codeoffset, header.codeoffset);
 	fprintf(h, "CODELEN: 0x%X (%i)\n", header.codelength, header.codelength);
@@ -92,6 +92,10 @@ static void process_header(FILE* h) {
 	fprintf(h, "DATALEN: 0x%X (%i)\n", header.datalen, header.datalen);
 	fprintf(h, "LITLEN : 0x%X (%i)\n", header.litlen, header.litlen);
 	fprintf(h, "BSSLEN : 0x%X (%i)\n", header.bsslen, header.bsslen);
+#ifdef QVMOPS_VER2
+	if (header.magic == VM_MAGIC_VER2)
+		fprintf(h, "JTRGLEN: 0x%X (%i)\n", header2.jtrglen, header2.jtrglen);
+#endif
 }
 
 

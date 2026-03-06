@@ -18,7 +18,11 @@ Created By:
 // magic numbers at start of .qvm
 // .qvm is generated with little endian order
 // magic number appears in file as 44 14 72 12
-#define VM_MAGIC	0x12721444	// little endian
+#define VM_MAGIC		0x12721444	// little endian
+
+#define VM_MAGIC_VER2	0x12721445	// little endian
+// processing of version 2 jump table
+// #define QVMOPS_VER2
 
 // opcodes
 typedef enum vmop_e {
@@ -95,6 +99,15 @@ typedef struct vmheader_s {
 	int litlen;
 	int bsslen;
 } vmheader_t;
+extern vmheader_t header;
+
+#ifdef QVMOPS_VER2
+typedef struct vmheader2_s {
+	vmheader_t header;
+	int jtrglen;
+} vmheader2_t;*/
+extern vmheader2_t header2;
+#endif
 
 const char* opcodename(vmop_t op);
 int opcodeparamsize(vmop_t op);
@@ -105,10 +118,11 @@ enum {
 	SEGMENT_DATA,
 	SEGMENT_LIT,
 	SEGMENT_BSS,
+#ifdef QVMOPS_VER2
+	SEGMENT_JTRG,
+#endif
 	SEGMENT_COUNT,
 };
-
-extern vmheader_t header;
 
 #define MAX_INSTRUCTIONS 1000000
 // a single instruction in code segment
