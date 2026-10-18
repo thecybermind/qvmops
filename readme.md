@@ -1,10 +1,11 @@
-# qvmops - Quake3 Virtual Machine disassembler  
+# qvmops
+qvmops - Quake3 Virtual Machine disassembler  
 Copyright 2004-2026  
 https://github.com/thecybermind/qvmops/  
 3-clause BSD license: https://opensource.org/license/bsd-3-clause  
-
-Created By: Kevin Masterson < k.m.masterson@gmail.com >
-
+  
+Created By: Kevin Masterson < k.m.masterson@gmail.com >  
+  
 ---
 
 ## Usage
